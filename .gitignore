@@ -1,0 +1,43 @@
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Data files (local usage logs)
+backend/data/
+backend/__pycache__/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Node modules (frontend)
+node_modules/
