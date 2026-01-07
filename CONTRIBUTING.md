@@ -18,7 +18,6 @@ Thank you for your interest in contributing to StuDenTools! This guide will help
 
 Current AI features:
 - **Paraphraser** – Requires language understanding for academic tone conversion
-- **Auto Timetable** – Uses AI for intelligent schedule optimization
 
 When proposing new features, consider whether AI is truly necessary or if a simpler solution would suffice.
 
