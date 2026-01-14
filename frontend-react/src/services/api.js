@@ -45,4 +45,4 @@ export function formatFileSize(bytes) {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
 }
 
-export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
+export const MAX_FILE_SIZE = 50 * 1024 * 1024 // 10 MB
