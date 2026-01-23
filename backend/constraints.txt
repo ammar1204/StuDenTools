@@ -1,0 +1,3 @@
+# Constraints file to force headless OpenCV
+# This prevents pdf2docx from installing opencv-python (which needs GUI libs)
+opencv-python-headless>=4.8.0
