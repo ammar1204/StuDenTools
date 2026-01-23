@@ -7,8 +7,9 @@ python-multipart>=0.0.6
 
 # PDF Processing
 PyPDF2>=3.0.0
-opencv-python-headless>=4.8.0  # Must be before pdf2docx to prevent opencv-python from being installed
-pdf2docx>=0.5.6
+# TEMPORARILY DISABLED - OpenCV dependency issues on Railway
+# opencv-python-headless>=4.8.0
+# pdf2docx>=0.5.6
 pdfplumber>=0.10.0
 
 # Image Processing
