@@ -1,2 +1,0 @@
-[phases.install]
-cmds = ["pip install -c constraints.txt -r requirements.txt"]
