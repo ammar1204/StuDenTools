@@ -10,7 +10,7 @@ router = APIRouter()
 
 # OpenRouter configuration
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "google/gemini-2.0-flash-exp:free"  # Can be changed to any OpenRouter model
+DEFAULT_MODEL = "openai/gpt-oss-120b:free"  # Can be changed to any OpenRouter model
 
 def get_openrouter_client():
     """Create and return an OpenRouter client."""
