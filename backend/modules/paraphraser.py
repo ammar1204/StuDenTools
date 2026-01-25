@@ -65,7 +65,7 @@ async def paraphrase_text(request: ParaphraseRequest):
     
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = ACADEMIC_PROMPT.format(text=request.text)
         response = model.generate_content(prompt)
         response.resolve()
