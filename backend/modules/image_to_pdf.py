@@ -2,12 +2,15 @@ import os
 import shutil
 import tempfile
 from typing import List, Optional
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Request
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 from PIL import Image
 
 router = APIRouter()
+
+# Rate limiting
+from rate_limiter import limiter, RATE_LIMITS
 
 
 def cleanup_temp_dir(temp_dir: str):
@@ -56,7 +59,9 @@ def prepare_image_for_pdf(image: Image.Image) -> Image.Image:
 
 
 @router.post("/api/images-to-pdf")
+@limiter.limit(RATE_LIMITS["file_processing"])
 async def convert_images_to_pdf(
+    request: Request,
     files: List[UploadFile] = File(...),
     crop_margin: Optional[int] = Form(default=0, description="Crop margin percentage (0-20)"),
     auto_order: Optional[bool] = Form(default=True, description="Auto-order by filename")
@@ -177,7 +182,9 @@ async def convert_images_to_pdf(
 
 
 @router.post("/api/image-to-pdf")
+@limiter.limit(RATE_LIMITS["file_processing"])
 async def convert_single_image_to_pdf(
+    request: Request,
     file: UploadFile = File(...),
     crop_margin: Optional[int] = Form(default=0, description="Crop margin percentage (0-20)")
 ):

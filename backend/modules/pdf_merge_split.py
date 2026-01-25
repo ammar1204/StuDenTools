@@ -2,12 +2,15 @@ import os
 import shutil
 import tempfile
 from typing import List
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Request
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 from PyPDF2 import PdfReader, PdfWriter
 
 router = APIRouter()
+
+# Rate limiting
+from rate_limiter import limiter, RATE_LIMITS
 
 
 def cleanup_temp_dir(temp_dir: str):
@@ -20,7 +23,8 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 
 
 @router.post("/api/pdf/merge")
-async def merge_pdfs(files: List[UploadFile] = File(...)):
+@limiter.limit(RATE_LIMITS["file_processing"])
+async def merge_pdfs(request: Request, files: List[UploadFile] = File(...)):
     """
     Merge multiple PDF files into a single PDF document.
     
@@ -91,7 +95,9 @@ async def merge_pdfs(files: List[UploadFile] = File(...)):
 
 
 @router.post("/api/pdf/split")
+@limiter.limit(RATE_LIMITS["file_processing"])
 async def split_pdf(
+    request: Request,
     file: UploadFile = File(...),
     start_page: int = Form(..., description="Start page (1-indexed)"),
     end_page: int = Form(..., description="End page (1-indexed, inclusive)")
@@ -185,7 +191,8 @@ async def split_pdf(
 
 
 @router.post("/api/pdf/info")
-async def get_pdf_info(file: UploadFile = File(...)):
+@limiter.limit(RATE_LIMITS["lightweight"])
+async def get_pdf_info(request: Request, file: UploadFile = File(...)):
     """
     Get information about a PDF file (useful before splitting).
     

@@ -1,12 +1,15 @@
 import os
 import shutil
 import tempfile
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from fastapi.responses import JSONResponse, FileResponse
 from starlette.background import BackgroundTask
 from PyPDF2 import PdfReader, PdfWriter
 
 router = APIRouter()
+
+# Rate limiting
+from rate_limiter import limiter, RATE_LIMITS
 
 
 def cleanup_temp_dir(temp_dir: str):
@@ -35,7 +38,8 @@ def calculate_reduction(original: int, compressed: int) -> float:
 
 
 @router.post("/api/pdf/compress")
-async def compress_pdf(file: UploadFile = File(...)):
+@limiter.limit(RATE_LIMITS["file_processing"])
+async def compress_pdf(request: Request, file: UploadFile = File(...)):
     """
     Compress a PDF file to reduce its size.
     
@@ -117,7 +121,8 @@ async def compress_pdf(file: UploadFile = File(...)):
 
 
 @router.post("/api/pdf/compress/preview")
-async def compress_pdf_preview(file: UploadFile = File(...)):
+@limiter.limit(RATE_LIMITS["file_processing"])
+async def compress_pdf_preview(request: Request, file: UploadFile = File(...)):
     """
     Preview compression results without downloading the file.
     

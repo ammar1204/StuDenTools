@@ -8,6 +8,10 @@ load_dotenv()
 
 router = APIRouter()
 
+# Rate limiting
+from rate_limiter import limiter, RATE_LIMITS
+from fastapi import Request
+
 # OpenRouter configuration
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "openai/gpt-oss-120b:free"  # Can be changed to any OpenRouter model
@@ -41,7 +45,8 @@ class ParaphraseResponse(BaseModel):
 
 
 @router.post("/api/paraphrase", response_model=ParaphraseResponse)
-async def paraphrase_text(request: ParaphraseRequest):
+@limiter.limit(RATE_LIMITS["ai"])
+async def paraphrase_text(request: Request, paraphrase_request: ParaphraseRequest):
     """
     Paraphrase text in an academic tone.
     
@@ -67,7 +72,7 @@ async def paraphrase_text(request: ParaphraseRequest):
                 },
                 {
                     "role": "user",
-                    "content": f"Paraphrase the following text:\n\n{request.text}"
+                    "content": f"Paraphrase the following text:\n\n{paraphrase_request.text}"
                 }
             ],
         )
@@ -86,11 +91,11 @@ async def paraphrase_text(request: ParaphraseRequest):
                 detail="The AI model returned an empty response."
             )
         
-        original_words = len(request.text.split())
+        original_words = len(paraphrase_request.text.split())
         paraphrased_words = len(paraphrased.split())
         
         return ParaphraseResponse(
-            original_text=request.text,
+            original_text=paraphrase_request.text,
             paraphrased_text=paraphrased,
             original_word_count=original_words,
             paraphrased_word_count=paraphrased_words
@@ -106,7 +111,8 @@ async def paraphrase_text(request: ParaphraseRequest):
 
 
 @router.post("/api/paraphrase/batch")
-async def paraphrase_batch(texts: list[str]):
+@limiter.limit(RATE_LIMITS["ai"])
+async def paraphrase_batch(request: Request, texts: list[str]):
     """
     Paraphrase multiple texts in academic tone.
     

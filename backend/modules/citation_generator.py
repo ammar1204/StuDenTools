@@ -11,6 +11,10 @@ load_dotenv()
 
 router = APIRouter()
 
+# Rate limiting
+from rate_limiter import limiter, RATE_LIMITS
+from fastapi import Request
+
 # OpenRouter configuration
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "google/gemini-2.0-flash-exp:free"
@@ -459,7 +463,8 @@ def format_citation(metadata: dict, style: str) -> str:
 
 
 @router.post("/api/citation", response_model=CitationResponse)
-async def generate_citation(request: CitationRequest):
+@limiter.limit(RATE_LIMITS["ai"])
+async def generate_citation(request: Request, citation_request: CitationRequest):
     """
     Generate a formatted citation from DOI, URL, or paper title.
     
@@ -471,34 +476,34 @@ async def generate_citation(request: CitationRequest):
     """
 
     valid_styles = ["apa", "ieee", "harvard"]
-    style = request.style.lower()
+    style = citation_request.style.lower()
     if style not in valid_styles:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid style. Must be one of: {', '.join(valid_styles)}"
         )
 
-    input_type = detect_input_type(request.input)
+    input_type = detect_input_type(citation_request.input)
     
     try:
         if input_type == "doi":
-            doi = extract_doi(request.input)
+            doi = extract_doi(citation_request.input)
             raw_data = await fetch_crossref_by_doi(doi)
             metadata = parse_crossref_metadata(raw_data)
             detected_type = metadata.get("type", "journal-article")
             
         elif input_type == "url":
-            metadata = await extract_url_metadata(request.input)
+            metadata = await extract_url_metadata(citation_request.input)
             detected_type = "website"
             
         else:  # title search
-            raw_data = await fetch_crossref_by_title(request.input)
+            raw_data = await fetch_crossref_by_title(citation_request.input)
             metadata = parse_crossref_metadata(raw_data)
             detected_type = metadata.get("type", "journal-article")
 
-        if request.source_type:
-            detected_type = request.source_type
-            metadata["type"] = request.source_type
+        if citation_request.source_type:
+            detected_type = citation_request.source_type
+            metadata["type"] = citation_request.source_type
 
         citation = format_citation(metadata, style)
         

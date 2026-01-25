@@ -1,12 +1,15 @@
 import os
 import shutil
 import tempfile
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 from pdf2docx import Converter
 
 router = APIRouter()
+
+# Rate limiting
+from rate_limiter import limiter, RATE_LIMITS
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
@@ -18,7 +21,8 @@ def cleanup_temp_dir(temp_dir: str):
 
 
 @router.post("/api/pdf-to-word")
-async def convert_pdf_to_word(file: UploadFile = File(...)):
+@limiter.limit(RATE_LIMITS["file_processing"])
+async def convert_pdf_to_word(request: Request, file: UploadFile = File(...)):
     """
     Convert a PDF file to an editable Word document (.docx)
     

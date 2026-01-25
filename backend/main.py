@@ -20,6 +20,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Setup rate limiting
+from rate_limiter import setup_rate_limiting
+setup_rate_limiting(app)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # In production, specify your frontend URL

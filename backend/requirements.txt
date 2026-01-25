@@ -29,3 +29,6 @@ httpx>=0.25.0
 # Excel Processing
 pandas>=2.0.0
 openpyxl>=3.1.0
+
+# Rate Limiting
+slowapi>=0.1.9
