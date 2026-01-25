@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { Analytics } from '@vercel/analytics/react'
+import SEO from './components/SEO'
 import Header from './components/Layout/Header'
 import Footer from './components/Layout/Footer'
 import ToolGrid from './components/ToolGrid'
@@ -120,8 +121,22 @@ const tools = [
 ]
 
 function HomePage() {
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "StuDenTools",
+    "url": "https://studentoolss.com/",
+    "description": "A collection of useful tools for students."
+  }
+
   return (
     <>
+      <SEO
+        title="Student Tools for GPA, Citations, PDFs & Coursework"
+        description="Free student utilities for GPA calculation, citation generation, PDF tools, unit conversion, and daily academic work. No sign-up, no clutter."
+        canonical="https://studentoolss.com/"
+        jsonLd={websiteJsonLd}
+      />
       <Header />
       <main className="main">
         <div className="container">
@@ -148,6 +163,7 @@ function App() {
                 title={tool.title}
                 seoTitle={tool.seoTitle}
                 seoDescription={tool.seoDescription}
+                path={`/${tool.id}`}
               >
                 <tool.component />
               </ToolPage>

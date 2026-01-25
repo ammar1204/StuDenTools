@@ -1,29 +1,33 @@
-import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import SEO from './SEO'
 
-export default function ToolPage({ icon, title, seoTitle, seoDescription, children }) {
-    useEffect(() => {
-        // Set page title
-        document.title = seoTitle || title
+export default function ToolPage({ icon, title, seoTitle, seoDescription, path, children }) {
+    const canonicalUrl = `https://studentoolss.com${path}`
 
-        // Set meta description
-        let metaDescription = document.querySelector('meta[name="description"]')
-        const originalDescription = metaDescription?.getAttribute('content') || ''
-
-        if (seoDescription && metaDescription) {
-            metaDescription.setAttribute('content', seoDescription)
+    // Construct JSON-LD for the software application/tool
+    const toolJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": seoTitle || title,
+        "description": seoDescription,
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
         }
+    }
 
-        return () => {
-            document.title = 'Student Tools for GPA, Citations, PDFs & Coursework'
-            if (metaDescription) {
-                metaDescription.setAttribute('content', 'Free student utilities for GPA calculation, citation generation, PDF tools, unit conversion, and daily academic work. No sign-up, no clutter.')
-            }
-        }
-    }, [seoTitle, seoDescription, title])
 
     return (
         <div className="tool-page">
+            <SEO
+                title={seoTitle || title}
+                description={seoDescription}
+                canonical={canonicalUrl}
+                jsonLd={toolJsonLd}
+            />
             <div className="tool-page-header">
                 <Link to="/" className="back-button">← Back</Link>
             </div>
