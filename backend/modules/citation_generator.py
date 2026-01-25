@@ -3,7 +3,7 @@ import re
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-import google.generativeai as genai
+from openai import OpenAI
 from dotenv import load_dotenv
 from typing import Optional
 
@@ -11,9 +11,19 @@ load_dotenv()
 
 router = APIRouter()
 
+# OpenRouter configuration
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_MODEL = "google/gemini-2.0-flash-exp:free"
 
-def get_api_key():
-    return os.getenv("GEMINI_API_KEY", "")
+def get_openrouter_client():
+    """Create and return an OpenRouter client."""
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    if not api_key:
+        return None
+    return OpenAI(
+        base_url=OPENROUTER_BASE_URL,
+        api_key=api_key,
+    )
 
 
 DOI_PATTERN = r"^10\.\d{4,}/[^\s]+"
@@ -161,16 +171,14 @@ def parse_crossref_metadata(data: dict) -> dict:
     }
 
 
-async def extract_url_metadata(url: str, api_key: str) -> dict:
-    """Use Gemini to extract citation metadata from a URL."""
-    if not api_key:
+async def extract_url_metadata(url: str) -> dict:
+    """Use OpenRouter to extract citation metadata from a URL."""
+    client = get_openrouter_client()
+    if not client:
         raise HTTPException(
             status_code=500,
-            detail="GEMINI_API_KEY is required for URL citation extraction"
+            detail="OPENROUTER_API_KEY is required for URL citation extraction"
         )
-    
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.5-flash')
     
     prompt = f"""Extract citation metadata from this URL for academic citation purposes.
 
@@ -186,18 +194,29 @@ Return a JSON object with these fields (use null for unknown values):
     "site_name": "website name",
     "publisher": "organization name",
     "url": "{url}",
-    "access_date": "2026-01-03",
+    "access_date": "2026-01-25",
     "type": "website"
 }}
 
 Return ONLY the JSON object, no other text."""
 
-    response = model.generate_content(prompt)
-    response.resolve()
+    response = client.chat.completions.create(
+        model=DEFAULT_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a metadata extraction assistant. Extract citation information from URLs and return valid JSON only."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+    )
     
     try:
         import json
-        text = response.text.strip()
+        text = response.choices[0].message.content.strip()
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
@@ -208,16 +227,16 @@ Return ONLY the JSON object, no other text."""
         metadata = json.loads(text.strip())
         metadata["type"] = "website"
         return metadata
-    except (json.JSONDecodeError, AttributeError):
+    except (json.JSONDecodeError, AttributeError, IndexError):
         return {
             "title": url,
             "authors": [],
             "year": 2026,
             "month": 1,
-            "day": 3,
+            "day": 25,
             "site_name": url.split("/")[2] if "/" in url else url,
             "url": url,
-            "access_date": "2026-01-03",
+            "access_date": "2026-01-25",
             "type": "website"
         }
 
@@ -469,8 +488,7 @@ async def generate_citation(request: CitationRequest):
             detected_type = metadata.get("type", "journal-article")
             
         elif input_type == "url":
-            api_key = get_api_key()
-            metadata = await extract_url_metadata(request.input, api_key)
+            metadata = await extract_url_metadata(request.input)
             detected_type = "website"
             
         else:  # title search
