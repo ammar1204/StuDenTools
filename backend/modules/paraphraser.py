@@ -1,33 +1,27 @@
 import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-import google.generativeai as genai
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
 router = APIRouter()
 
-def get_api_key():
-    """Retrieve the Gemini API key from environment variables."""
-    return os.getenv("GEMINI_API_KEY", "")
+# OpenRouter configuration
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_MODEL = "google/gemini-2.0-flash-exp:free"  # Can be changed to any OpenRouter model
 
-ACADEMIC_PROMPT = """You are an academic writing assistant. Your task is to paraphrase the following text in a formal, academic tone.
+def get_openrouter_client():
+    """Create and return an OpenRouter client."""
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    if not api_key:
+        return None
+    return OpenAI(
+        base_url=OPENROUTER_BASE_URL,
+        api_key=api_key,
+    )
 
-Guidelines:
-- Use formal, scholarly language
-- Maintain the original meaning completely
-- Use appropriate academic vocabulary
-- Avoid colloquialisms and informal expressions
-- Use passive voice where appropriate for academic writing
-- Ensure clarity and precision
-- Do not add new information or opinions
-- Keep the same approximate length
-
-Only respond with the paraphrased text, nothing else.
-
-Text to paraphrase:
-{text}"""
 
 
 class ParaphraseRequest(BaseModel):
@@ -56,36 +50,41 @@ async def paraphrase_text(request: ParaphraseRequest):
     - Tone: Formal, scholarly, precise
     """
     
-    api_key = get_api_key()
-    if not api_key:
+    client = get_openrouter_client()
+    if not client:
         raise HTTPException(
             status_code=500,
-            detail="GEMINI_API_KEY environment variable is not set. Please configure your API key."
+            detail="OPENROUTER_API_KEY environment variable is not set. Please configure your API key."
         )
     
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        prompt = ACADEMIC_PROMPT.format(text=request.text)
-        response = model.generate_content(prompt)
-        response.resolve()
+        response = client.chat.completions.create(
+            model=DEFAULT_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an academic writing assistant. Your task is to paraphrase text in a formal, academic tone. Use formal, scholarly language. Maintain the original meaning completely. Use appropriate academic vocabulary. Avoid colloquialisms and informal expressions. Use passive voice where appropriate for academic writing. Ensure clarity and precision. Do not add new information or opinions. Keep the same approximate length. Only respond with the paraphrased text, nothing else."
+                },
+                {
+                    "role": "user",
+                    "content": f"Paraphrase the following text:\n\n{request.text}"
+                }
+            ],
+        )
         
-        if not response.candidates:
-             raise HTTPException(
+        if not response.choices:
+            raise HTTPException(
                 status_code=500,
-                detail="The AI model did not return any results. This might be due to safety filters."
+                detail="The AI model did not return any results."
             )
-            
-        try:
-            paraphrased = response.text.strip()
-        except (ValueError, IndexError, AttributeError):
-            if response.candidates and response.candidates[0].content.parts:
-                paraphrased = response.candidates[0].content.parts[0].text.strip()
-            else:
-                raise HTTPException(
-                    status_code=500,
-                    detail="The AI model returned an empty response or was blocked by safety filters."
-                )
+        
+        paraphrased = response.choices[0].message.content.strip()
+        
+        if not paraphrased:
+            raise HTTPException(
+                status_code=500,
+                detail="The AI model returned an empty response."
+            )
         
         original_words = len(request.text.split())
         paraphrased_words = len(paraphrased.split())
@@ -115,11 +114,11 @@ async def paraphrase_batch(texts: list[str]):
     - Output: List of paraphrased texts
     """
     
-    api_key = get_api_key()
-    if not api_key:
+    client = get_openrouter_client()
+    if not client:
         raise HTTPException(
             status_code=500,
-            detail="GEMINI_API_KEY environment variable is not set."
+            detail="OPENROUTER_API_KEY environment variable is not set."
         )
     
     if len(texts) > 5:
@@ -147,15 +146,23 @@ async def paraphrase_batch(texts: list[str]):
             )
     
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        
         results = []
         for text in texts:
-            prompt = ACADEMIC_PROMPT.format(text=text)
-            response = model.generate_content(prompt)
+            response = client.chat.completions.create(
+                model=DEFAULT_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an academic writing assistant. Paraphrase text in a formal, academic tone. Only respond with the paraphrased text, nothing else."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Paraphrase the following text:\n\n{text}"
+                    }
+                ],
+            )
             
-            paraphrased = response.text.strip() if response.text else text
+            paraphrased = response.choices[0].message.content.strip() if response.choices else text
             
             results.append({
                 "original_text": text,

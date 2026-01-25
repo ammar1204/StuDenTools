@@ -15,8 +15,8 @@ pdfplumber>=0.10.0
 # Image Processing
 Pillow>=10.0.0
 
-# AI/ML - Paraphraser
-google-generativeai>=0.3.0
+# AI/ML - Paraphraser (via OpenRouter)
+openai>=1.0.0
 
 # Data Validation
 pydantic>=2.0.0
