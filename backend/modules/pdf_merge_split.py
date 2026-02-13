@@ -19,7 +19,7 @@ def cleanup_temp_dir(temp_dir: str):
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_FILE_SIZE = 30 * 1024 * 1024
 
 
 @router.post("/api/pdf/merge")
