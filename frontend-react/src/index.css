@@ -87,6 +87,29 @@ body {
     font-weight: 400;
 }
 
+.contribute-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text);
+    background: transparent;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: all var(--transition);
+    letter-spacing: 0.3px;
+}
+
+.contribute-btn:hover {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+}
+
 /* ===== Main & Tool Grid ===== */
 .main {
     padding: 2rem 0 3rem;

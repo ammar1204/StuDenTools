@@ -13,6 +13,7 @@ from modules.image_to_pdf import router as image_to_pdf_router
 from modules.feedback import router as feedback_router
 from modules.citation_generator import router as citation_router
 from modules.auto_timetable import router as auto_timetable_router
+from modules.image_converter import router as image_converter_router
 
 app = FastAPI(
     title="StuDenTools API",
@@ -48,6 +49,7 @@ app.include_router(image_to_pdf_router)
 app.include_router(feedback_router)
 app.include_router(citation_router)
 app.include_router(auto_timetable_router)
+app.include_router(image_converter_router)
 
 @app.get("/")
 async def root():

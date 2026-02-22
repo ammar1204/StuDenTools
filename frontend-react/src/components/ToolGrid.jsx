@@ -10,9 +10,10 @@ const tools = [
     { id: 'images-to-pdf', icon: '▣', title: 'Images to PDF', desc: 'Convert images to PDF' },
     { id: 'paraphrase', icon: '¶', title: 'Paraphraser', desc: 'Rephrase that assignment you want to dub' },
     { id: 'citation', icon: '❝', title: 'Citation Generator', desc: 'Generate APA, IEEE, Harvard citations' },
-    { id: 'timetable', icon: '▦', title: 'Timetable Maker', desc: 'Build your weekly class schedule', isNew: true },
-    { id: 'auto-timetable', icon: '◈', title: 'Auto Timetable', desc: 'Auto-generate your optimal schedule', isNew: true },
-    { id: 'feedback', icon: '💬', title: 'Request a Tool', desc: 'Tell us what you need' },
+    { id: 'timetable', icon: '▦', title: 'Timetable Maker', desc: 'Build your weekly class schedule' },
+    { id: 'auto-timetable', icon: '◈', title: 'Auto Timetable', desc: 'Auto-generate your optimal schedule' },
+    { id: 'image-converter', icon: '⟳', title: 'Image Converter', desc: 'Convert between PNG, JPG, WEBP, BMP' },
+    { id: 'feedback', icon: '✎', title: 'Request a Tool', desc: 'Tell us what you need' },
 ]
 
 export default function ToolGrid() {

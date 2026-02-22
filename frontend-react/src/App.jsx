@@ -20,6 +20,7 @@ import CitationGenerator from './tools/CitationGenerator'
 import Feedback from './tools/Feedback'
 import TimetableMaker from './tools/TimetableMaker'
 import AutoTimetable from './tools/AutoTimetable'
+import ImageConverter from './tools/ImageConverter'
 
 const tools = [
   {
@@ -111,8 +112,16 @@ const tools = [
     component: AutoTimetable
   },
   {
+    id: 'image-converter',
+    icon: '⟳',
+    title: 'Image Converter',
+    seoTitle: 'Image Format Converter — PNG, JPG, WEBP, BMP',
+    seoDescription: 'Convert images between PNG, JPG, WEBP, and BMP formats. Fast, free image conversion for students.',
+    component: ImageConverter
+  },
+  {
     id: 'feedback',
-    icon: '💬',
+    icon: '✎',
     title: 'Request a Tool',
     seoTitle: 'Request a Tool or Give Feedback — Student Toolbox',
     seoDescription: 'Suggest new student tools or send feedback to help improve the platform. Built with students in mind.',
