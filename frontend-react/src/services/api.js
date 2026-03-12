@@ -45,4 +45,11 @@ export function formatFileSize(bytes) {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
 }
 
-export const MAX_FILE_SIZE = 50 * 1024 * 1024
+// Server-side tools (limited by upload bandwidth + server memory)
+export const MAX_FILE_SIZE = 50 * 1024 * 1024           // 50MB — default/legacy
+export const SERVER_COMPRESS_LIMIT = 100 * 1024 * 1024   // 100MB — matches backend pdf_compressor
+export const SERVER_PDF_TO_WORD_LIMIT = 10 * 1024 * 1024 // 10MB — pdf2docx is CPU-heavy
+
+// Client-side tools (limited only by browser memory)
+export const CLIENT_PDF_LIMIT = 200 * 1024 * 1024       // 200MB — pdf-lib merge/split
+export const CLIENT_IMAGE_LIMIT = 100 * 1024 * 1024     // 100MB — canvas image conversion

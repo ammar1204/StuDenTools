@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { apiFormData, formatFileSize, MAX_FILE_SIZE } from '../services/api'
+import { apiFormData, formatFileSize, SERVER_PDF_TO_WORD_LIMIT } from '../services/api'
 
 export default function PDFToWord() {
     const { showToast } = useToast()
@@ -12,8 +12,8 @@ export default function PDFToWord() {
         const selectedFile = e.target.files[0]
         if (!selectedFile) return
 
-        if (selectedFile.size > MAX_FILE_SIZE) {
-            showToast(`File size exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`, 'error')
+        if (selectedFile.size > SERVER_PDF_TO_WORD_LIMIT) {
+            showToast(`File size exceeds ${formatFileSize(SERVER_PDF_TO_WORD_LIMIT)} limit`, 'error')
             return
         }
         setFile(selectedFile)
@@ -60,7 +60,7 @@ export default function PDFToWord() {
                 <div className="file-upload-icon">↑</div>
                 <div className="file-upload-text">
                     <strong>Click to upload</strong> or drag & drop<br />
-                    PDF file (max 10MB)
+                    PDF file (max {formatFileSize(SERVER_PDF_TO_WORD_LIMIT)})
                 </div>
                 <input type="file" id="pdfFile" accept=".pdf" onChange={handleFileSelect} />
             </div>

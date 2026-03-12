@@ -1,6 +1,65 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { apiFormData, formatFileSize, MAX_FILE_SIZE } from '../services/api'
+import { formatFileSize, CLIENT_PDF_LIMIT } from '../services/api'
+import { jsPDF } from 'jspdf'
+
+/**
+ * Read a File as a data URL for embedding in jsPDF.
+ */
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = () => reject(new Error(`Failed to read ${file.name}`))
+        reader.readAsDataURL(file)
+    })
+}
+
+/**
+ * Get image dimensions from a data URL.
+ */
+function getImageDimensions(dataUrl) {
+    return new Promise((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
+        img.onerror = () => reject(new Error('Failed to load image dimensions'))
+        img.src = dataUrl
+    })
+}
+
+/**
+ * Build a PDF from image files entirely client-side using jsPDF.
+ * Each image becomes a separate page sized to fit the image.
+ */
+async function buildPdfFromImages(files) {
+    const pdf = new jsPDF({ unit: 'px', format: 'a4' })
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+
+    for (let i = 0; i < files.length; i++) {
+        const dataUrl = await readFileAsDataURL(files[i])
+        const dims = await getImageDimensions(dataUrl)
+
+        // Scale image to fit page while preserving aspect ratio
+        const ratio = Math.min(pageWidth / dims.width, pageHeight / dims.height)
+        const scaledW = dims.width * ratio
+        const scaledH = dims.height * ratio
+        const x = (pageWidth - scaledW) / 2
+        const y = (pageHeight - scaledH) / 2
+
+        if (i > 0) pdf.addPage()
+
+        // Determine format from file extension
+        const ext = files[i].name.split('.').pop().toLowerCase()
+        const format = ext === 'jpg' || ext === 'jpeg' ? 'JPEG'
+            : ext === 'webp' ? 'WEBP'
+            : 'PNG'
+
+        pdf.addImage(dataUrl, format, x, y, scaledW, scaledH)
+    }
+
+    return pdf.output('blob')
+}
 
 export default function ImagesToPDF() {
     const { showToast } = useToast()
@@ -13,8 +72,8 @@ export default function ImagesToPDF() {
         if (selectedFiles.length === 0) return
 
         const totalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0)
-        if (totalSize > MAX_FILE_SIZE) {
-            showToast(`Total size exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`, 'error')
+        if (totalSize > CLIENT_PDF_LIMIT) {
+            showToast(`Total size exceeds ${formatFileSize(CLIENT_PDF_LIMIT)} limit`, 'error')
             return
         }
 
@@ -27,12 +86,7 @@ export default function ImagesToPDF() {
 
         setLoading(true)
         try {
-            const formData = new FormData()
-            files.forEach(f => formData.append('files', f))
-
-            const response = await apiFormData('/api/images-to-pdf', formData)
-            const blob = await response.blob()
-
+            const blob = await buildPdfFromImages(files)
             setResult({ blob, filename: 'images.pdf' })
             showToast('Conversion complete!', 'success')
         } catch (error) {

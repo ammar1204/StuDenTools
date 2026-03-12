@@ -1,16 +1,72 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { apiFormData, formatFileSize, MAX_FILE_SIZE } from '../services/api'
+import { formatFileSize, CLIENT_IMAGE_LIMIT } from '../services/api'
 
 const FORMAT_OPTIONS = [
-    { value: 'png', label: 'PNG' },
-    { value: 'jpg', label: 'JPG' },
-    { value: 'webp', label: 'WEBP' },
-    { value: 'bmp', label: 'BMP' },
+    { value: 'png', label: 'PNG', mime: 'image/png' },
+    { value: 'jpg', label: 'JPG', mime: 'image/jpeg' },
+    { value: 'webp', label: 'WEBP', mime: 'image/webp' },
 ]
+
+const QUALITY_MAP = {
+    jpg: 0.95,
+    webp: 0.90,
+    png: undefined, // lossless
+}
 
 function getFileExtension(filename) {
     return filename.split('.').pop().toLowerCase()
+}
+
+/**
+ * Convert an image file to the target format using Canvas API.
+ * Handles RGBA→RGB flattening for JPEG by drawing onto white background.
+ */
+function convertImageClientSide(file, outputFormat) {
+    return new Promise((resolve, reject) => {
+        const img = new Image()
+        const reader = new FileReader()
+
+        reader.onload = (e) => {
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas')
+                    canvas.width = img.naturalWidth
+                    canvas.height = img.naturalHeight
+                    const ctx = canvas.getContext('2d')
+
+                    // For JPEG: fill white background first (no transparency support)
+                    if (outputFormat === 'jpg') {
+                        ctx.fillStyle = '#FFFFFF'
+                        ctx.fillRect(0, 0, canvas.width, canvas.height)
+                    }
+
+                    ctx.drawImage(img, 0, 0)
+
+                    const fmt = FORMAT_OPTIONS.find(f => f.value === outputFormat)
+                    const quality = QUALITY_MAP[outputFormat]
+
+                    canvas.toBlob(
+                        (blob) => {
+                            if (!blob) {
+                                reject(new Error(`Conversion to ${outputFormat.toUpperCase()} failed — format may not be supported by your browser`))
+                                return
+                            }
+                            resolve(blob)
+                        },
+                        fmt.mime,
+                        quality
+                    )
+                } catch (err) {
+                    reject(err)
+                }
+            }
+            img.onerror = () => reject(new Error('Failed to load image'))
+            img.src = e.target.result
+        }
+        reader.onerror = () => reject(new Error('Failed to read file'))
+        reader.readAsDataURL(file)
+    })
 }
 
 export default function ImageConverter() {
@@ -24,8 +80,8 @@ export default function ImageConverter() {
         const selected = e.target.files[0]
         if (!selected) return
 
-        if (selected.size > MAX_FILE_SIZE) {
-            showToast(`File exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`, 'error')
+        if (selected.size > CLIENT_IMAGE_LIMIT) {
+            showToast(`File exceeds ${formatFileSize(CLIENT_IMAGE_LIMIT)} limit`, 'error')
             return
         }
 
@@ -46,7 +102,6 @@ export default function ImageConverter() {
         e.currentTarget.classList.remove('dragover')
         const dropped = e.dataTransfer.files[0]
         if (dropped) {
-            // Trigger through the same handler logic
             const fakeEvent = { target: { files: [dropped] } }
             handleFileSelect(fakeEvent)
         }
@@ -57,12 +112,7 @@ export default function ImageConverter() {
 
         setLoading(true)
         try {
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('output_format', outputFormat)
-
-            const response = await apiFormData('/api/convert-image', formData)
-            const blob = await response.blob()
+            const blob = await convertImageClientSide(file, outputFormat)
 
             const originalName = file.name.replace(/\.[^/.]+$/, '')
             const ext = FORMAT_OPTIONS.find(f => f.value === outputFormat)?.value || outputFormat

@@ -1,6 +1,36 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { apiFormData, formatFileSize, MAX_FILE_SIZE } from '../services/api'
+import { formatFileSize, CLIENT_PDF_LIMIT } from '../services/api'
+import { PDFDocument } from 'pdf-lib'
+
+/**
+ * Read a File as an ArrayBuffer for pdf-lib.
+ */
+function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = () => reject(new Error(`Failed to read ${file.name}`))
+        reader.readAsArrayBuffer(file)
+    })
+}
+
+/**
+ * Merge multiple PDFs client-side using pdf-lib.
+ */
+async function mergePdfsClientSide(files) {
+    const mergedPdf = await PDFDocument.create()
+
+    for (const file of files) {
+        const arrayBuffer = await readFileAsArrayBuffer(file)
+        const sourcePdf = await PDFDocument.load(arrayBuffer)
+        const copiedPages = await mergedPdf.copyPages(sourcePdf, sourcePdf.getPageIndices())
+        copiedPages.forEach(page => mergedPdf.addPage(page))
+    }
+
+    const mergedBytes = await mergedPdf.save()
+    return new Blob([mergedBytes], { type: 'application/pdf' })
+}
 
 export default function PDFMerge() {
     const { showToast } = useToast()
@@ -8,34 +38,54 @@ export default function PDFMerge() {
     const [result, setResult] = useState(null)
     const [loading, setLoading] = useState(false)
 
-    const handleFileSelect = (e) => {
-        const selectedFiles = Array.from(e.target.files)
-        if (selectedFiles.length < 2) {
-            showToast('Please select at least 2 PDFs', 'error')
+    const addFiles = (e) => {
+        const newFiles = Array.from(e.target.files)
+        if (newFiles.length === 0) return
+
+        // Validate each file is a PDF
+        const invalidFile = newFiles.find(f => !f.name.toLowerCase().endsWith('.pdf'))
+        if (invalidFile) {
+            showToast(`"${invalidFile.name}" is not a PDF file`, 'error')
             return
         }
 
-        const totalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0)
-        if (totalSize > MAX_FILE_SIZE) {
-            showToast(`Total size exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`, 'error')
+        const combined = [...files, ...newFiles]
+        const totalSize = combined.reduce((acc, f) => acc + f.size, 0)
+        if (totalSize > CLIENT_PDF_LIMIT) {
+            showToast(`Total size exceeds ${formatFileSize(CLIENT_PDF_LIMIT)} limit`, 'error')
             return
         }
 
-        setFiles(selectedFiles)
+        setFiles(combined)
+        setResult(null)
+
+        // Reset the input so the same file can be added again if needed
+        e.target.value = ''
+    }
+
+    const removeFile = (index) => {
+        setFiles(files.filter((_, i) => i !== index))
+        setResult(null)
+    }
+
+    const moveFile = (index, direction) => {
+        const newFiles = [...files]
+        const targetIndex = index + direction
+        if (targetIndex < 0 || targetIndex >= newFiles.length) return
+        ;[newFiles[index], newFiles[targetIndex]] = [newFiles[targetIndex], newFiles[index]]
+        setFiles(newFiles)
         setResult(null)
     }
 
     const mergePdfs = async () => {
-        if (files.length < 2) return
+        if (files.length < 2) {
+            showToast('Please add at least 2 PDF files to merge', 'error')
+            return
+        }
 
         setLoading(true)
         try {
-            const formData = new FormData()
-            files.forEach(f => formData.append('files', f))
-
-            const response = await apiFormData('/api/pdf/merge', formData)
-            const blob = await response.blob()
-
+            const blob = await mergePdfsClientSide(files)
             setResult({ blob, filename: 'merged.pdf' })
             showToast('PDFs merged!', 'success')
         } catch (error) {
@@ -62,25 +112,45 @@ export default function PDFMerge() {
             <div className="file-upload" onClick={() => document.getElementById('mergeFiles').click()}>
                 <div className="file-upload-icon">↑</div>
                 <div className="file-upload-text">
-                    <strong>Click to upload</strong> or drag & drop<br />
-                    Multiple PDF files (min 2)
+                    <strong>Click to add PDFs</strong> or drag & drop<br />
+                    {files.length === 0 ? 'Add PDF files one by one or multiple at once' : 'Add more PDFs'}
                 </div>
-                <input type="file" id="mergeFiles" accept=".pdf" multiple onChange={handleFileSelect} />
+                <input type="file" id="mergeFiles" accept=".pdf" multiple onChange={addFiles} />
             </div>
 
             {files.length > 0 && (
                 <div className="file-list">
                     {files.map((f, i) => (
-                        <div key={i} className="file-item">
-                            <span className="file-item-name">{f.name}</span>
-                            <span>{formatFileSize(f.size)}</span>
+                        <div key={`${f.name}-${f.size}-${i}`} className="file-item">
+                            <span className="file-item-name" style={{ flex: 1 }}>{f.name}</span>
+                            <span style={{ marginRight: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{formatFileSize(f.size)}</span>
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                <button
+                                    className="btn-remove"
+                                    onClick={() => moveFile(i, -1)}
+                                    disabled={i === 0}
+                                    title="Move up"
+                                    style={{ opacity: i === 0 ? 0.3 : 1 }}
+                                >↑</button>
+                                <button
+                                    className="btn-remove"
+                                    onClick={() => moveFile(i, 1)}
+                                    disabled={i === files.length - 1}
+                                    title="Move down"
+                                    style={{ opacity: i === files.length - 1 ? 0.3 : 1 }}
+                                >↓</button>
+                                <button className="btn-remove" onClick={() => removeFile(i)} title="Remove">×</button>
+                            </div>
                         </div>
                     ))}
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                        {files.length} file{files.length !== 1 ? 's' : ''} · {formatFileSize(files.reduce((a, f) => a + f.size, 0))} total
+                    </div>
                 </div>
             )}
 
             <button className="btn btn-primary" onClick={mergePdfs} disabled={files.length < 2 || loading} style={{ marginTop: '1rem' }}>
-                {loading ? <><span className="loading"></span> Merging...</> : 'Merge PDFs'}
+                {loading ? <><span className="loading"></span> Merging...</> : `Merge ${files.length} PDF${files.length !== 1 ? 's' : ''}`}
             </button>
 
             {result && (

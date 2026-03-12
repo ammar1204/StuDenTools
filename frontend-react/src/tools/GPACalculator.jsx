@@ -1,17 +1,40 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { apiJson } from '../services/api'
 
-// Grade options per scale
+// Grade-point maps (same as server-side logic)
+const SCALE_4_0 = { A: 4.0, B: 3.0, C: 2.0, D: 1.0, F: 0.0 }
+const SCALE_5_0 = { A: 5.0, B: 4.0, C: 3.0, D: 2.0, E: 1.0, F: 0.0 }
+
 const GRADES_4_0 = ['A', 'B', 'C', 'D', 'F']
 const GRADES_5_0 = ['A', 'B', 'C', 'D', 'E', 'F']
+
+function calculateGPALocally(courses, scaleType) {
+    const scaleMap = scaleType === '5.0' ? SCALE_5_0 : SCALE_4_0
+
+    let totalPoints = 0
+    let totalCredits = 0
+
+    for (const course of courses) {
+        const points = scaleMap[course.grade.toUpperCase()] ?? 0
+        totalPoints += points * course.credits
+        totalCredits += course.credits
+    }
+
+    const gpa = totalCredits > 0 ? totalPoints / totalCredits : 0
+
+    return {
+        gpa: Math.round(gpa * 100) / 100,
+        total_credits: totalCredits,
+        total_courses: courses.length,
+        scale_type: scaleType,
+    }
+}
 
 export default function GPACalculator() {
     const { showToast } = useToast()
     const [courses, setCourses] = useState([{ grade: '', credits: '' }])
     const [scale, setScale] = useState('4.0')
     const [result, setResult] = useState(null)
-    const [loading, setLoading] = useState(false)
 
     // Get grades based on selected scale
     const grades = scale === '5.0' ? GRADES_5_0 : GRADES_4_0
@@ -34,7 +57,7 @@ export default function GPACalculator() {
         setCourses(updated)
     }
 
-    const calculateGPA = async () => {
+    const calculateGPA = () => {
         const validCourses = courses
             .filter(c => c.grade && c.credits > 0)
             .map(c => ({ grade: c.grade, credits: parseFloat(c.credits) }))
@@ -44,17 +67,11 @@ export default function GPACalculator() {
             return
         }
 
-        setLoading(true)
         try {
-            const data = await apiJson('/api/gpa', {
-                courses: validCourses,
-                scale_type: scale
-            })
+            const data = calculateGPALocally(validCourses, scale)
             setResult(data)
         } catch (error) {
-            showToast(error.message || 'Failed to calculate GPA', 'error')
-        } finally {
-            setLoading(false)
+            showToast('GPA calculation failed: ' + error.message, 'error')
         }
     }
 
@@ -102,8 +119,8 @@ export default function GPACalculator() {
                 </select>
             </div>
 
-            <button className="btn btn-primary" onClick={calculateGPA} disabled={loading}>
-                {loading ? <><span className="loading"></span> Calculating...</> : 'Calculate GPA'}
+            <button className="btn btn-primary" onClick={calculateGPA}>
+                Calculate GPA
             </button>
 
             {result && (

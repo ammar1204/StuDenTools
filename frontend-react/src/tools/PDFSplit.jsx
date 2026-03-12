@@ -1,10 +1,44 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { apiFormData, formatFileSize, MAX_FILE_SIZE } from '../services/api'
+import { formatFileSize, CLIENT_PDF_LIMIT } from '../services/api'
+import { PDFDocument } from 'pdf-lib'
+
+/**
+ * Read a File as an ArrayBuffer for pdf-lib.
+ */
+function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = () => reject(new Error(`Failed to read ${file.name}`))
+        reader.readAsArrayBuffer(file)
+    })
+}
+
+/**
+ * Extract a range of pages from a PDF client-side using pdf-lib.
+ */
+async function splitPdfClientSide(arrayBuffer, startPage, endPage) {
+    const sourcePdf = await PDFDocument.load(arrayBuffer)
+    const newPdf = await PDFDocument.create()
+
+    // Convert 1-indexed to 0-indexed
+    const pageIndices = []
+    for (let i = startPage - 1; i < endPage; i++) {
+        pageIndices.push(i)
+    }
+
+    const copiedPages = await newPdf.copyPages(sourcePdf, pageIndices)
+    copiedPages.forEach(page => newPdf.addPage(page))
+
+    const pdfBytes = await newPdf.save()
+    return new Blob([pdfBytes], { type: 'application/pdf' })
+}
 
 export default function PDFSplit() {
     const { showToast } = useToast()
     const [file, setFile] = useState(null)
+    const [pdfData, setPdfData] = useState(null) // cached ArrayBuffer
     const [pageCount, setPageCount] = useState(0)
     const [startPage, setStartPage] = useState(1)
     const [endPage, setEndPage] = useState(1)
@@ -15,45 +49,41 @@ export default function PDFSplit() {
         const selectedFile = e.target.files[0]
         if (!selectedFile) return
 
-        if (selectedFile.size > MAX_FILE_SIZE) {
-            showToast(`File size exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`, 'error')
+        if (selectedFile.size > CLIENT_PDF_LIMIT) {
+            showToast(`File size exceeds ${formatFileSize(CLIENT_PDF_LIMIT)} limit`, 'error')
             return
         }
 
         setFile(selectedFile)
         setResult(null)
 
-        // Get page count
+        // Read and validate PDF client-side — get page count instantly
         try {
-            const formData = new FormData()
-            formData.append('file', selectedFile)
-            const response = await apiFormData('/api/pdf/info', formData)
-            const data = await response.json()
-            setPageCount(data.total_pages)
-            setEndPage(data.total_pages)
+            const arrayBuffer = await readFileAsArrayBuffer(selectedFile)
+            const pdf = await PDFDocument.load(arrayBuffer)
+            const totalPages = pdf.getPageCount()
+
+            setPdfData(arrayBuffer)
+            setPageCount(totalPages)
+            setStartPage(1)
+            setEndPage(totalPages)
         } catch (error) {
-            showToast('Failed to read PDF info', 'error')
+            showToast('Failed to read PDF — file may be corrupted or password-protected', 'error')
             setFile(null)
+            setPdfData(null)
         }
     }
 
     const splitPdf = async () => {
-        if (!file || startPage > endPage) {
+        if (!file || !pdfData || startPage > endPage) {
             showToast('Invalid page range', 'error')
             return
         }
 
         setLoading(true)
         try {
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('start_page', startPage)
-            formData.append('end_page', endPage)
-
-            const response = await apiFormData('/api/pdf/split', formData)
-            const blob = await response.blob()
+            const blob = await splitPdfClientSide(pdfData, startPage, endPage)
             const filename = `${file.name.replace('.pdf', '')}_pages_${startPage}-${endPage}.pdf`
-
             setResult({ blob, filename })
             showToast('PDF split!', 'success')
         } catch (error) {
@@ -81,7 +111,7 @@ export default function PDFSplit() {
                 <div className="file-upload-icon">↑</div>
                 <div className="file-upload-text">
                     <strong>Click to upload</strong> or drag & drop<br />
-                    PDF file (max 10MB)
+                    PDF file (max {formatFileSize(CLIENT_PDF_LIMIT)})
                 </div>
                 <input type="file" id="splitFile" accept=".pdf" onChange={handleFileSelect} />
             </div>

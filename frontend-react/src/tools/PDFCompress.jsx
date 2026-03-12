@@ -1,21 +1,46 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { apiFormData, formatFileSize, MAX_FILE_SIZE } from '../services/api'
+import { apiFormData, formatFileSize, SERVER_COMPRESS_LIMIT } from '../services/api'
+import { PDFDocument } from 'pdf-lib'
+
+/**
+ * Read a File as an ArrayBuffer for pdf-lib validation.
+ */
+function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = () => reject(new Error(`Failed to read ${file.name}`))
+        reader.readAsArrayBuffer(file)
+    })
+}
 
 export default function PDFCompress() {
     const { showToast } = useToast()
     const [file, setFile] = useState(null)
+    const [pageInfo, setPageInfo] = useState(null)
     const [result, setResult] = useState(null)
     const [loading, setLoading] = useState(false)
 
-    const handleFileSelect = (e) => {
+    const handleFileSelect = async (e) => {
         const selectedFile = e.target.files[0]
         if (!selectedFile) return
 
-        if (selectedFile.size > MAX_FILE_SIZE) {
-            showToast(`File size exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`, 'error')
+        if (selectedFile.size > SERVER_COMPRESS_LIMIT) {
+            showToast(`File size exceeds ${formatFileSize(SERVER_COMPRESS_LIMIT)} limit`, 'error')
             return
         }
+
+        // Client-side PDF validation — catch corrupt files before upload
+        try {
+            const arrayBuffer = await readFileAsArrayBuffer(selectedFile)
+            const pdf = await PDFDocument.load(arrayBuffer)
+            setPageInfo({ pages: pdf.getPageCount() })
+        } catch {
+            showToast('Invalid or corrupted PDF file', 'error')
+            return
+        }
+
         setFile(selectedFile)
         setResult(null)
     }
@@ -78,7 +103,7 @@ export default function PDFCompress() {
                 <div className="file-list">
                     <div className="file-item">
                         <span className="file-item-name">{file.name}</span>
-                        <span>{formatFileSize(file.size)}</span>
+                        <span>{formatFileSize(file.size)}{pageInfo ? ` · ${pageInfo.pages} pages` : ''}</span>
                     </div>
                 </div>
             )}
