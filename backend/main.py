@@ -4,16 +4,12 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-# Removed: GPA calculator moved to client-side
 from modules.pdf_to_word import router as pdf_to_word_router
-# Removed: PDF merge/split moved to client-side
 from modules.pdf_compressor import router as pdf_compressor_router
 from modules.paraphraser import router as paraphraser_router
-# Removed: Images-to-PDF moved to client-side
 from modules.feedback import router as feedback_router
 from modules.citation_generator import router as citation_router
 from modules.auto_timetable import router as auto_timetable_router
-# Removed: Image converter moved to client-side
 
 app = FastAPI(
     title="StuDenTools API",
@@ -40,16 +36,12 @@ app.add_middleware(
     ],
 )
 
-# Removed: GPA calculator moved to client-side
 app.include_router(pdf_to_word_router)
-# Removed: PDF merge/split moved to client-side
 app.include_router(pdf_compressor_router)
 app.include_router(paraphraser_router)
-# Removed: Images-to-PDF moved to client-side
 app.include_router(feedback_router)
 app.include_router(citation_router)
 app.include_router(auto_timetable_router)
-# Removed: Image converter moved to client-side
 
 @app.get("/")
 async def root():

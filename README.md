@@ -2,27 +2,40 @@
 
 A collection of free productivity tools built for students. Features GPA calculator, PDF tools, academic paraphraser, citation generator, timetable makers, and more.
 
+Many tools run **entirely in your browser** — no server upload needed, instant results, and works offline.
+
 ## Features
 
+### Client-Side (runs in your browser)
 - **GPA Calculator** – Calculate GPA on 4.0 or 5.0 scale
-- **PDF Tools** – Convert, merge, split, and compress PDFs
+- **Image Converter** – Convert between PNG, JPG, and WebP formats
 - **Images to PDF** – Combine multiple images into a single PDF
-- **Academic Paraphraser** – Rewrite text in formal academic tone (AI-powered)
-- **Citation Generator** – Generate APA, IEEE, Harvard citations from DOI, URL, or title
+- **PDF Merge** – Combine multiple PDFs into one document
+- **PDF Split** – Extract page ranges from a PDF
 - **Timetable Maker** – Create and visualize weekly class schedules
 - **Unit Converter** – Convert common STEM units
+
+### Server-Side
+- **PDF Compress** – Reduce PDF file size (hybrid: client validates, server compresses)
+- **PDF to Word** – Convert PDF to editable Word document
+- **Academic Paraphraser** – Rewrite text in formal academic tone (AI-powered)
+- **Citation Generator** – Generate APA, IEEE, Harvard citations from DOI, URL, or title
+- **Auto Timetable** – AI-powered schedule generation
 
 ## Tech Stack
 
 **Backend:**
 - Python 3.10+
 - FastAPI
-- Google Gemini AI (for paraphrasing)
-- PyPDF2, pdf2docx, Pillow
+- OpenRouter AI (for paraphrasing & citations)
+- PyPDF2, pdf2docx
 
 **Frontend:**
-- React 18+ (Vite)
+- React 19 (Vite)
 - Vanilla CSS
+- [pdf-lib](https://pdf-lib.js.org/) – client-side PDF merge/split
+- [jsPDF](https://github.com/parallax/jsPDF) – client-side image-to-PDF
+- Canvas API – client-side image format conversion
 - Vercel Analytics
 
 ## Getting Started
@@ -86,19 +99,36 @@ Create a `.env` file in the `backend` directory:
 | `RESEND_API_KEY` | Resend API key for email notifications | No |
 | `MAIL_TO` | Email address for feedback notifications | No |
 
+## Architecture
+
+Tools are split between **client-side** (browser) and **server-side** processing:
+
+| Tool | Processing | Library | Max Size |
+|------|-----------|---------|----------|
+| GPA Calculator | Client | JS math | — |
+| Image Converter | Client | Canvas API | 100MB |
+| Images to PDF | Client | jsPDF | 200MB |
+| PDF Merge | Client | pdf-lib | 200MB |
+| PDF Split | Client | pdf-lib | 200MB |
+| PDF Compress | Server | PyPDF2 | 100MB |
+| PDF to Word | Server | pdf2docx | 10MB |
+| Paraphraser | Server | OpenRouter AI | — |
+| Citation Generator | Server | CrossRef + AI | — |
+
 ## Project Structure
 
 ```
-studentoolss/
+StuDenTools/
 ├── backend/
 │   ├── main.py              # FastAPI app entry point
-│   ├── modules/             # API route handlers
+│   ├── modules/             # Server-side tool handlers
 │   ├── requirements.txt     # Python dependencies
 │   └── .env.example         # Environment template
 ├── frontend-react/
 │   ├── src/
 │   │   ├── components/      # Reusable UI components
-│   │   ├── tools/           # Individual tool pages
+│   │   ├── tools/           # Tool pages (client + server)
+│   │   ├── services/api.js  # API helpers & size limits
 │   │   ├── App.jsx          # Main app with routing
 │   │   └── index.css        # Global styles
 │   └── package.json         # Node dependencies

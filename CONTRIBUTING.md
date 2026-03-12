@@ -39,11 +39,13 @@ git checkout -b fix/bug-description
 - Follow PEP 8 style guidelines
 - Add new modules in `backend/modules/`
 - Register new routes in `backend/main.py`
+- Only use the server for tools that need external APIs or heavy libraries
 
 **Frontend (React):**
 - Create tool components in `frontend-react/src/tools/`
 - Add reusable components in `frontend-react/src/components/`
 - Follow existing component patterns and naming conventions
+- **Prefer client-side processing** when possible (see below)
 
 ### Committing
 
@@ -81,11 +83,23 @@ git commit -m "Update: what was changed"
 
 ## Adding a New Tool
 
-1. **Backend**: Create a new module in `backend/modules/`
-2. **Backend**: Add routes in `backend/main.py`
-3. **Frontend**: Create a tool component in `frontend-react/src/tools/`
-4. **Frontend**: Add the tool to `App.jsx` routing
-5. **Frontend**: Add the tool card to `ToolGrid.jsx`
+First decide: **does the tool need the server?** Use the server only if the tool requires:
+- External APIs (AI, data lookups)
+- Libraries with no JS equivalent (e.g., `pdf2docx`)
+- Secrets or credentials
+
+### Client-Side Tool
+1. Create a tool component in `frontend-react/src/tools/`
+2. Use browser APIs or JS libraries (`pdf-lib`, `jsPDF`, Canvas API, etc.)
+3. Add size limits from `services/api.js` (`CLIENT_PDF_LIMIT`, `CLIENT_IMAGE_LIMIT`)
+4. Add the tool to `App.jsx` routing and `ToolGrid.jsx`
+
+### Server-Side Tool
+1. Create a new module in `backend/modules/`
+2. Register routes in `backend/main.py`
+3. Create a frontend component in `frontend-react/src/tools/`
+4. Use `apiJson` or `apiFormData` from `services/api.js`
+5. Add the tool to `App.jsx` routing and `ToolGrid.jsx`
 
 ## Reporting Issues
 
