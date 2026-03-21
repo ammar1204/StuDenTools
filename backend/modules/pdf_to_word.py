@@ -11,7 +11,7 @@ router = APIRouter()
 
 from rate_limiter import limiter, RATE_LIMITS
 
-MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_FILE_SIZE = 5 * 1024 * 1024
 
 
 def cleanup_temp_dir(temp_dir: str):

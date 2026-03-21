@@ -60,6 +60,6 @@ export function formatFileSize(bytes) {
 
 export const MAX_FILE_SIZE = 50 * 1024 * 1024
 export const SERVER_COMPRESS_LIMIT = 100 * 1024 * 1024
-export const SERVER_PDF_TO_WORD_LIMIT = 10 * 1024 * 1024
+export const SERVER_PDF_TO_WORD_LIMIT = 5 * 1024 * 1024
 export const CLIENT_PDF_LIMIT = 200 * 1024 * 1024
 export const CLIENT_IMAGE_LIMIT = 100 * 1024 * 1024
