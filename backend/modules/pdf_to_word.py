@@ -1,3 +1,4 @@
+import asyncio
 import os
 import shutil
 import tempfile
@@ -8,14 +9,12 @@ from pdf2docx import Converter
 
 router = APIRouter()
 
-# Rate limiting
 from rate_limiter import limiter, RATE_LIMITS
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
 
 def cleanup_temp_dir(temp_dir: str):
-    """Remove temporary directory and all its contents."""
     if os.path.exists(temp_dir):
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -23,13 +22,6 @@ def cleanup_temp_dir(temp_dir: str):
 @router.post("/api/pdf-to-word")
 @limiter.limit(RATE_LIMITS["file_processing"])
 async def convert_pdf_to_word(request: Request, file: UploadFile = File(...)):
-    """
-    Convert a PDF file to an editable Word document (.docx)
-    
-    - File size limit: 10MB
-    - Accepts: PDF files only
-    - Returns: Word document (.docx)
-    """
     
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(
@@ -45,7 +37,6 @@ async def convert_pdf_to_word(request: Request, file: UploadFile = File(...)):
             detail=f"File size exceeds the 10MB limit. Your file is {len(content) / (1024 * 1024):.2f}MB"
         )
     
-    # Create temporary files for processing
     temp_dir = tempfile.mkdtemp()
     pdf_path = os.path.join(temp_dir, "input.pdf")
     docx_path = os.path.join(temp_dir, "output.docx")
@@ -54,9 +45,12 @@ async def convert_pdf_to_word(request: Request, file: UploadFile = File(...)):
         with open(pdf_path, "wb") as pdf_file:
             pdf_file.write(content)
         
-        cv = Converter(pdf_path)
-        cv.convert(docx_path)
-        cv.close()
+        def _convert():
+            cv = Converter(pdf_path)
+            cv.convert(docx_path)
+            cv.close()
+
+        await asyncio.to_thread(_convert)
         
         original_name = os.path.splitext(file.filename)[0]
         output_filename = f"{original_name}.docx"

@@ -31,12 +31,25 @@ export async function apiJson(endpoint, data) {
     return response.json()
 }
 
-export async function apiFormData(endpoint, formData) {
-    const response = await apiRequest(endpoint, {
-        method: 'POST',
-        body: formData,
-    })
-    return response
+export async function apiFormData(endpoint, formData, timeoutMs = 120000) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+    try {
+        const response = await apiRequest(endpoint, {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+        })
+        return response
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error('Request timed out. The file may be too large or complex — try a smaller PDF.')
+        }
+        throw error
+    } finally {
+        clearTimeout(timer)
+    }
 }
 
 export function formatFileSize(bytes) {
@@ -45,11 +58,8 @@ export function formatFileSize(bytes) {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
 }
 
-// Server-side tools (limited by upload bandwidth + server memory)
-export const MAX_FILE_SIZE = 50 * 1024 * 1024           // 50MB — default/legacy
-export const SERVER_COMPRESS_LIMIT = 100 * 1024 * 1024   // 100MB — matches backend pdf_compressor
-export const SERVER_PDF_TO_WORD_LIMIT = 10 * 1024 * 1024 // 10MB — pdf2docx is CPU-heavy
-
-// Client-side tools (limited only by browser memory)
-export const CLIENT_PDF_LIMIT = 200 * 1024 * 1024       // 200MB — pdf-lib merge/split
-export const CLIENT_IMAGE_LIMIT = 100 * 1024 * 1024     // 100MB — canvas image conversion
+export const MAX_FILE_SIZE = 50 * 1024 * 1024
+export const SERVER_COMPRESS_LIMIT = 100 * 1024 * 1024
+export const SERVER_PDF_TO_WORD_LIMIT = 10 * 1024 * 1024
+export const CLIENT_PDF_LIMIT = 200 * 1024 * 1024
+export const CLIENT_IMAGE_LIMIT = 100 * 1024 * 1024
