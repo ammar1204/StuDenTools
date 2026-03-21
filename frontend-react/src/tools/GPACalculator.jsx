@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
+import { logAnalyticsEvent } from '../services/api'
 
 // Grade-point maps (same as server-side logic)
 const SCALE_4_0 = { A: 4.0, B: 3.0, C: 2.0, D: 1.0, F: 0.0 }
@@ -70,6 +71,8 @@ export default function GPACalculator() {
         try {
             const data = calculateGPALocally(validCourses, scale)
             setResult(data)
+            
+            logAnalyticsEvent('gpa-calculator', 'success', null, `Calculated for ${validCourses.length} courses on ${scale} scale`)
         } catch (error) {
             showToast('GPA calculation failed: ' + error.message, 'error')
         }

@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+import time
+from logger import logger
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
@@ -10,12 +12,27 @@ from modules.paraphraser import router as paraphraser_router
 from modules.feedback import router as feedback_router
 from modules.citation_generator import router as citation_router
 from modules.auto_timetable import router as auto_timetable_router
+from modules.analytics import router as analytics_router
 
 app = FastAPI(
     title="StuDenTools API",
     description="A collection of student productivity tools",
     version="1.0.0"
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    
+    # Don't clutter logs with health checks
+    if request.url.path != "/health":
+        logger.info(
+            f"Path: {request.url.path} | Method: {request.method} | "
+            f"Status: {response.status_code} | Time: {process_time:.3f}s"
+        )
+    return response
 
 from rate_limiter import setup_rate_limiting
 setup_rate_limiting(app)
@@ -41,6 +58,7 @@ app.include_router(paraphraser_router)
 app.include_router(feedback_router)
 app.include_router(citation_router)
 app.include_router(auto_timetable_router)
+app.include_router(analytics_router)
 
 @app.get("/")
 async def root():

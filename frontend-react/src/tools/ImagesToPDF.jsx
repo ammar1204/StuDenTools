@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { formatFileSize, CLIENT_PDF_LIMIT } from '../services/api'
+import { formatFileSize, CLIENT_PDF_LIMIT, logAnalyticsEvent } from '../services/api'
 import { jsPDF } from 'jspdf'
 
 /**
@@ -89,6 +89,9 @@ export default function ImagesToPDF() {
             const blob = await buildPdfFromImages(files)
             setResult({ blob, filename: 'images.pdf' })
             showToast('Conversion complete!', 'success')
+            
+            const totalMb = files.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)
+            logAnalyticsEvent('images-to-pdf', 'success', totalMb, `Converted ${files.length} images`)
         } catch (error) {
             showToast(error.message || 'Conversion failed', 'error')
         } finally {

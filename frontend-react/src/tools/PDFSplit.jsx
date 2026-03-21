@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { formatFileSize, CLIENT_PDF_LIMIT } from '../services/api'
+import { formatFileSize, CLIENT_PDF_LIMIT, logAnalyticsEvent } from '../services/api'
 import { PDFDocument } from 'pdf-lib'
 
 /**
@@ -86,6 +86,8 @@ export default function PDFSplit() {
             const filename = `${file.name.replace('.pdf', '')}_pages_${startPage}-${endPage}.pdf`
             setResult({ blob, filename })
             showToast('PDF split!', 'success')
+            
+            logAnalyticsEvent('pdf-split', 'success', file.size / (1024 * 1024), `Pages ${startPage}-${endPage}`)
         } catch (error) {
             showToast(error.message || 'Split failed', 'error')
         } finally {

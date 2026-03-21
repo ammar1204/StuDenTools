@@ -3,6 +3,7 @@ import shutil
 import tempfile
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from fastapi.responses import JSONResponse, FileResponse
+from logger import logger
 from starlette.background import BackgroundTask
 from PyPDF2 import PdfReader, PdfWriter
 
@@ -61,6 +62,8 @@ async def compress_pdf(request: Request, file: UploadFile = File(...)):
     content = await file.read()
     original_size = len(content)
     
+    logger.info(f"SERVER EVENT | Tool: pdf-compressor | Action: start | Size: {original_size / (1024*1024):.2f}MB")
+    
     if original_size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400,
@@ -93,6 +96,8 @@ async def compress_pdf(request: Request, file: UploadFile = File(...)):
         original_name = os.path.splitext(file.filename)[0]
         output_filename = f"{original_name}_compressed.pdf"
         
+        logger.info(f"SERVER EVENT | Tool: pdf-compressor | Action: success | Original: {format_size(original_size)} | Compressed: {format_size(compressed_size)} | Reduction: {reduction}%")
+        
         response = FileResponse(
             path=output_path,
             filename=output_filename,
@@ -113,6 +118,8 @@ async def compress_pdf(request: Request, file: UploadFile = File(...)):
         raise
     except Exception as e:
         cleanup_temp_dir(temp_dir)
+        
+        logger.error(f"SERVER EVENT | Tool: pdf-compressor | Action: error | Error: {str(e)}")
         
         raise HTTPException(
             status_code=500,

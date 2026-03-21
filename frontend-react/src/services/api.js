@@ -58,6 +58,20 @@ export function formatFileSize(bytes) {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
 }
 
+export function logAnalyticsEvent(toolName, action, fileSizeMb = null, details = null) {
+    // Fire and forget - don't await, don't throw errors to break the UI
+    fetch(`${API_BASE}/api/analytics/event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            tool_name: toolName, 
+            action, 
+            file_size_mb: fileSizeMb,
+            details 
+        }),
+    }).catch(err => console.error("Failed to log event", err))
+}
+
 export const MAX_FILE_SIZE = 50 * 1024 * 1024
 export const SERVER_COMPRESS_LIMIT = 100 * 1024 * 1024
 export const SERVER_PDF_TO_WORD_LIMIT = 5 * 1024 * 1024

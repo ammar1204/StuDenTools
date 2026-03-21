@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { formatFileSize, CLIENT_IMAGE_LIMIT } from '../services/api'
+import { formatFileSize, CLIENT_IMAGE_LIMIT, logAnalyticsEvent } from '../services/api'
 
 const FORMAT_OPTIONS = [
     { value: 'png', label: 'PNG', mime: 'image/png' },
@@ -118,6 +118,8 @@ export default function ImageConverter() {
             const ext = FORMAT_OPTIONS.find(f => f.value === outputFormat)?.value || outputFormat
             setResult({ blob, filename: `${originalName}.${ext}` })
             showToast('Conversion complete!', 'success')
+            
+            logAnalyticsEvent('image-converter', 'success', file.size / (1024 * 1024), `Converted to ${outputFormat}`)
         } catch (error) {
             showToast(error.message || 'Conversion failed', 'error')
         } finally {

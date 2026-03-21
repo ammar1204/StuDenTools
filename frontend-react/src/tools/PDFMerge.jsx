@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
-import { formatFileSize, CLIENT_PDF_LIMIT } from '../services/api'
+import { formatFileSize, CLIENT_PDF_LIMIT, logAnalyticsEvent } from '../services/api'
 import { PDFDocument } from 'pdf-lib'
 
 /**
@@ -88,6 +88,9 @@ export default function PDFMerge() {
             const blob = await mergePdfsClientSide(files)
             setResult({ blob, filename: 'merged.pdf' })
             showToast('PDFs merged!', 'success')
+            
+            const totalMb = files.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)
+            logAnalyticsEvent('pdf-merge', 'success', totalMb, `Merged ${files.length} files`)
         } catch (error) {
             showToast(error.message || 'Merge failed', 'error')
         } finally {

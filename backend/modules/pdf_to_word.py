@@ -4,6 +4,7 @@ import shutil
 import tempfile
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from fastapi.responses import FileResponse
+from logger import logger
 from starlette.background import BackgroundTask
 from pdf2docx import Converter
 
@@ -30,6 +31,9 @@ async def convert_pdf_to_word(request: Request, file: UploadFile = File(...)):
         )
     
     content = await file.read()
+    file_size_mb = len(content) / (1024 * 1024)
+    
+    logger.info(f"SERVER EVENT | Tool: pdf-to-word | Action: start | Size: {file_size_mb:.2f}MB")
     
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
@@ -55,6 +59,8 @@ async def convert_pdf_to_word(request: Request, file: UploadFile = File(...)):
         original_name = os.path.splitext(file.filename)[0]
         output_filename = f"{original_name}.docx"
         
+        logger.info(f"SERVER EVENT | Tool: pdf-to-word | Action: success | File: {file.filename}")
+        
         return FileResponse(
             path=docx_path,
             filename=output_filename,
@@ -64,6 +70,8 @@ async def convert_pdf_to_word(request: Request, file: UploadFile = File(...)):
         
     except Exception as e:
         cleanup_temp_dir(temp_dir)
+        
+        logger.error(f"SERVER EVENT | Tool: pdf-to-word | Action: error | Error: {str(e)}")
         
         raise HTTPException(
             status_code=500,
