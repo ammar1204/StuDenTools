@@ -38,7 +38,7 @@ async def convert_pdf_to_word(request: Request, file: UploadFile = File(...)):
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400,
-            detail=f"File size exceeds the 10MB limit. Your file is {len(content) / (1024 * 1024):.2f}MB"
+            detail=f"File size exceeds the 5MB limit. Your file is {len(content) / (1024 * 1024):.2f}MB"
         )
     
     temp_dir = tempfile.mkdtemp()
