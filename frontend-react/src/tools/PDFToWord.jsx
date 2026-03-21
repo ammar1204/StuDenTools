@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
 import { apiFormData, formatFileSize, SERVER_PDF_TO_WORD_LIMIT } from '../services/api'
+import { PDFDocument } from 'pdf-lib'
 
 export default function PDFToWord() {
     const { showToast } = useToast()
@@ -8,7 +9,7 @@ export default function PDFToWord() {
     const [result, setResult] = useState(null)
     const [loading, setLoading] = useState(false)
 
-    const handleFileSelect = (e) => {
+    const handleFileSelect = async (e) => {
         const selectedFile = e.target.files[0]
         if (!selectedFile) return
 
@@ -16,6 +17,23 @@ export default function PDFToWord() {
             showToast(`File size exceeds ${formatFileSize(SERVER_PDF_TO_WORD_LIMIT)} limit`, 'error')
             return
         }
+        
+        try {
+            const arrayBuffer = await selectedFile.arrayBuffer()
+            const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
+            const pageCount = pdfDoc.getPageCount()
+            
+            if (pageCount > 50) {
+                showToast(`PDF has ${pageCount} pages. Maximum allowed is 50. Please split it first.`, 'error')
+                e.target.value = null
+                return
+            }
+        } catch (error) {
+            console.error("Error reading PDF:", error)
+            showToast("Error checking PDF page count.", "error")
+            return
+        }
+
         setFile(selectedFile)
         setResult(null)
     }
@@ -60,7 +78,7 @@ export default function PDFToWord() {
                 <div className="file-upload-icon">↑</div>
                 <div className="file-upload-text">
                     <strong>Click to upload</strong> or drag & drop<br />
-                    PDF file (max {formatFileSize(SERVER_PDF_TO_WORD_LIMIT)})
+                    PDF file (max 50 pages)
                 </div>
                 <input type="file" id="pdfFile" accept=".pdf" onChange={handleFileSelect} />
             </div>

@@ -7,12 +7,14 @@ from fastapi.responses import FileResponse
 from logger import logger
 from starlette.background import BackgroundTask
 from pdf2docx import Converter
+from PyPDF2 import PdfReader
+import io
 
 router = APIRouter()
 
 from rate_limiter import limiter, RATE_LIMITS
 
-MAX_FILE_SIZE = 5 * 1024 * 1024
+MAX_FILE_SIZE = 20 * 1024 * 1024
 
 
 def cleanup_temp_dir(temp_dir: str):
@@ -38,8 +40,22 @@ async def convert_pdf_to_word(request: Request, file: UploadFile = File(...)):
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400,
-            detail=f"File size exceeds the 5MB limit. Your file is {len(content) / (1024 * 1024):.2f}MB"
+            detail=f"File size exceeds the 20MB limit. Your file is {len(content) / (1024 * 1024):.2f}MB"
         )
+    
+    try:
+        pdf_reader = PdfReader(io.BytesIO(content))
+        num_pages = len(pdf_reader.pages)
+        if num_pages > 50:
+            raise HTTPException(
+                status_code=400,
+                detail=f"PDF has {num_pages} pages. Maximum allowed is 50. Please split it first."
+            )
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        logger.error(f"Error reading PDF pages: {e}")
+        raise HTTPException(status_code=400, detail="Invalid or corrupt PDF file.")
     
     temp_dir = tempfile.mkdtemp()
     pdf_path = os.path.join(temp_dir, "input.pdf")
