@@ -4,6 +4,13 @@ from logger import logger
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
+import logging
+
+class EndpointFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.getMessage().find("/health") == -1
+
+logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
 load_dotenv()
 from modules.pdf_to_word import router as pdf_to_word_router
