@@ -17,7 +17,7 @@ from fastapi import Request
 
 # OpenRouter configuration
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "google/gemini-2.0-flash-exp:free"
+DEFAULT_MODEL = "openai/gpt-oss-120b:free"
 
 def get_openrouter_client():
     """Create and return an OpenRouter client."""
