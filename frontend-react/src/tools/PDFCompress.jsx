@@ -1,19 +1,6 @@
 import { useState } from 'react'
 import { useToast } from '../context/ToastContext'
 import { apiFormData, formatFileSize, SERVER_COMPRESS_LIMIT } from '../services/api'
-import { PDFDocument } from 'pdf-lib'
-
-/**
- * Read a File as an ArrayBuffer for pdf-lib validation.
- */
-function readFileAsArrayBuffer(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result)
-        reader.onerror = () => reject(new Error(`Failed to read ${file.name}`))
-        reader.readAsArrayBuffer(file)
-    })
-}
 
 export default function PDFCompress() {
     const { showToast } = useToast()
@@ -26,18 +13,13 @@ export default function PDFCompress() {
         const selectedFile = e.target.files[0]
         if (!selectedFile) return
 
-        if (selectedFile.size > SERVER_COMPRESS_LIMIT) {
-            showToast(`File size exceeds ${formatFileSize(SERVER_COMPRESS_LIMIT)} limit`, 'error')
+        if (selectedFile.type !== 'application/pdf' && !selectedFile.name.toLowerCase().endsWith('.pdf')) {
+            showToast('Please select a valid PDF file', 'error')
             return
         }
 
-        // Client-side PDF validation — catch corrupt files before upload
-        try {
-            const arrayBuffer = await readFileAsArrayBuffer(selectedFile)
-            const pdf = await PDFDocument.load(arrayBuffer)
-            setPageInfo({ pages: pdf.getPageCount() })
-        } catch {
-            showToast('Invalid or corrupted PDF file', 'error')
+        if (selectedFile.size > SERVER_COMPRESS_LIMIT) {
+            showToast(`File size exceeds ${formatFileSize(SERVER_COMPRESS_LIMIT)} limit`, 'error')
             return
         }
 
@@ -103,7 +85,7 @@ export default function PDFCompress() {
                 <div className="file-list">
                     <div className="file-item">
                         <span className="file-item-name">{file.name}</span>
-                        <span>{formatFileSize(file.size)}{pageInfo ? ` · ${pageInfo.pages} pages` : ''}</span>
+                        <span>{formatFileSize(file.size)}</span>
                     </div>
                 </div>
             )}
@@ -112,28 +94,66 @@ export default function PDFCompress() {
                 {loading ? <><span className="loading"></span> Compressing...</> : 'Compress PDF'}
             </button>
 
-            {result && (
-                <div className="result-box">
-                    <div className="result-label">✅ Compression Complete!</div>
-                    <div className="compression-stats">
-                        <div className="stat-item">
-                            <div className="stat-label">Original</div>
-                            <div className="stat-value">{formatFileSize(result.originalSize)}</div>
-                        </div>
-                        <div className="stat-arrow">→</div>
-                        <div className="stat-item">
-                            <div className="stat-label">Compressed</div>
-                            <div className="stat-value">{formatFileSize(result.compressedSize)}</div>
-                        </div>
+            {result && (() => {
+                const reduction = parseFloat(result.reduction)
+                const isAlreadyOptimized = reduction <= 2
+
+                return (
+                    <div className="result-box">
+                        {isAlreadyOptimized ? (
+                            <>
+                                <div className="result-label">📄 Already Well-Optimized</div>
+                                <div className="compression-stats">
+                                    <div className="stat-item">
+                                        <div className="stat-label">Original</div>
+                                        <div className="stat-value">{formatFileSize(result.originalSize)}</div>
+                                    </div>
+                                    <div className="stat-arrow">≈</div>
+                                    <div className="stat-item">
+                                        <div className="stat-label">After Compression</div>
+                                        <div className="stat-value">{formatFileSize(result.compressedSize)}</div>
+                                    </div>
+                                </div>
+                                <div style={{
+                                    marginTop: '0.75rem',
+                                    padding: '0.75rem 1rem',
+                                    background: 'var(--bg-tertiary, rgba(255,255,255,0.05))',
+                                    borderRadius: '8px',
+                                    fontSize: '0.85rem',
+                                    color: 'var(--text-muted)',
+                                    lineHeight: '1.5'
+                                }}>
+                                    💡 This PDF is already well-optimized — compression {reduction <= 0
+                                        ? 'would slightly increase the file size'
+                                        : `only reduced the size by ${reduction}%`
+                                    }. No further compression is needed!
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="result-label">✅ Compression Complete!</div>
+                                <div className="compression-stats">
+                                    <div className="stat-item">
+                                        <div className="stat-label">Original</div>
+                                        <div className="stat-value">{formatFileSize(result.originalSize)}</div>
+                                    </div>
+                                    <div className="stat-arrow">→</div>
+                                    <div className="stat-item">
+                                        <div className="stat-label">Compressed</div>
+                                        <div className="stat-value">{formatFileSize(result.compressedSize)}</div>
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: '0.5rem', color: 'var(--accent)', fontSize: '0.85rem', fontWeight: 500 }}>
+                                    🎉 {reduction}% smaller
+                                </div>
+                                <button className="btn btn-primary" onClick={downloadFile} style={{ marginTop: '0.5rem' }}>
+                                    📥 Download Compressed PDF
+                                </button>
+                            </>
+                        )}
                     </div>
-                    <div style={{ marginTop: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        {result.reduction}% reduction
-                    </div>
-                    <button className="btn btn-primary" onClick={downloadFile} style={{ marginTop: '0.5rem' }}>
-                        📥 Download Compressed PDF
-                    </button>
-                </div>
-            )}
+                )
+            })()}
         </>
     )
 }

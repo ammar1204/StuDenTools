@@ -448,16 +448,94 @@ def format_citation_harvard(metadata: dict) -> str:
     return " ".join(parts)
 
 
+def format_citation_mla(metadata: dict) -> str:
+    """Format citation in MLA 9th edition style."""
+    parts = []
+
+    # Authors: Last, First for first author; First Last for subsequent
+    authors = metadata.get("authors", [])
+    if authors:
+        author_strings = []
+        for i, author in enumerate(authors):
+            family = author.get("family", "")
+            given = author.get("given", "")
+            if family:
+                if i == 0:
+                    author_strings.append(f"{family}, {given}" if given else family)
+                else:
+                    author_strings.append(f"{given} {family}" if given else family)
+
+        if len(author_strings) == 1:
+            parts.append(author_strings[0] + ".")
+        elif len(author_strings) == 2:
+            parts.append(f"{author_strings[0]}, and {author_strings[1]}.")
+        elif len(author_strings) >= 3:
+            parts.append(f"{author_strings[0]}, et al.")
+
+    # Title
+    title = metadata.get("title", "")
+    if title:
+        if metadata.get("journal") or metadata.get("type") in ["journal-article", "article"]:
+            parts.append(f'\"{title}.\"')
+        elif metadata.get("type") == "website":
+            parts.append(f'\"{title}.\"')
+        else:
+            parts.append(f"*{title}*.")
+
+    # Container (journal or site name) in italics
+    journal = metadata.get("journal")
+    site_name = metadata.get("site_name")
+    if journal:
+        container = f"*{journal}*,"
+        parts.append(container)
+    elif site_name and metadata.get("type") == "website":
+        parts.append(f"*{site_name}*,")
+
+    # Volume and issue
+    volume = metadata.get("volume")
+    issue = metadata.get("issue")
+    if volume:
+        vol_str = f"vol. {volume}"
+        if issue:
+            vol_str += f", no. {issue}"
+        parts.append(vol_str + ",")
+
+    # Year
+    year = metadata.get("year")
+    if year:
+        parts.append(f"{year},")
+
+    # Pages
+    pages = metadata.get("pages")
+    if pages:
+        parts.append(f"pp. {pages}.")
+
+    # DOI or URL
+    doi = metadata.get("doi")
+    url = metadata.get("url")
+    if doi:
+        parts.append(f"https://doi.org/{doi}.")
+    elif url and metadata.get("type") == "website":
+        access_date = metadata.get("access_date", "")
+        parts.append(f"{url}.")
+        if access_date:
+            parts.append(f"Accessed {access_date}.")
+
+    return " ".join(parts)
+
+
 def format_citation(metadata: dict, style: str) -> str:
     """Format metadata into citation based on style."""
     style = style.lower()
-    
+
     if style == "apa":
         return format_citation_apa(metadata)
     elif style == "ieee":
         return format_citation_ieee(metadata)
     elif style == "harvard":
         return format_citation_harvard(metadata)
+    elif style == "mla":
+        return format_citation_mla(metadata)
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported citation style: {style}")
 
@@ -475,7 +553,7 @@ async def generate_citation(request: Request, citation_request: CitationRequest)
     Supported styles: APA, IEEE, Harvard
     """
 
-    valid_styles = ["apa", "ieee", "harvard"]
+    valid_styles = ["apa", "ieee", "harvard", "mla"]
     style = citation_request.style.lower()
     if style not in valid_styles:
         raise HTTPException(

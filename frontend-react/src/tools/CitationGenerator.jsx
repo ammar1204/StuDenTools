@@ -65,6 +65,7 @@ export default function CitationGenerator() {
                     <label className="form-label">Citation Style</label>
                     <select className="form-select" value={style} onChange={(e) => setStyle(e.target.value)}>
                         <option value="apa">APA (7th Edition)</option>
+                        <option value="mla">MLA (9th Edition)</option>
                         <option value="ieee">IEEE</option>
                         <option value="harvard">Harvard</option>
                     </select>
