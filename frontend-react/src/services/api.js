@@ -1,4 +1,4 @@
-const API_BASE = 'https://studentools-ndck.onrender.com/'
+const API_BASE = 'https://studentools-ndck.onrender.com'
 
 export async function apiRequest(endpoint, options = {}) {
     const response = await fetch(`${API_BASE}${endpoint}`, {
