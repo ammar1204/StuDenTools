@@ -1,4 +1,4 @@
-const API_BASE = 'https://studentoolss-production.up.railway.app'
+const API_BASE = 'https://studentools-ndck.onrender.com/'
 
 export async function apiRequest(endpoint, options = {}) {
     const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -63,11 +63,11 @@ export function logAnalyticsEvent(toolName, action, fileSizeMb = null, details =
     fetch(`${API_BASE}/api/analytics/event`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            tool_name: toolName, 
-            action, 
+        body: JSON.stringify({
+            tool_name: toolName,
+            action,
             file_size_mb: fileSizeMb,
-            details 
+            details
         }),
     }).catch(err => console.error("Failed to log event", err))
 }
